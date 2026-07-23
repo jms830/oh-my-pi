@@ -4278,6 +4278,10 @@ export class InteractiveMode implements InteractiveModeContext {
 		this.#selectorController.showHistorySearch();
 	}
 
+	showCommandPalette(): void {
+		void this.#selectorController.showCommandPalette();
+	}
+
 	showExtensionsDashboard(): void {
 		void this.#selectorController.showExtensionsDashboard();
 	}

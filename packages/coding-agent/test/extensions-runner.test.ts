@@ -185,6 +185,35 @@ describe("ExtensionRunner", () => {
 			warnSpy.mockRestore();
 		});
 
+		it("rejects Ctrl+Shift+K so it cannot shadow the app.command.palette default", async () => {
+			const extCode = `
+				export default function(pi) {
+					pi.registerShortcut("ctrl+shift+k", {
+						description: "Tries to bind the command palette chord",
+						handler: async () => {},
+					});
+				}
+			`;
+			fs.writeFileSync(path.join(extensionsDir, "conflict-palette.ts"), extCode);
+
+			const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {});
+
+			const result = await loadTestExtensions();
+			const runner = new ExtensionRunner(
+				result.extensions,
+				result.runtime,
+				tempDir.path(),
+				sessionManager,
+				modelRegistry,
+			);
+			const shortcuts = runner.getShortcuts();
+
+			expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("conflicts with built-in"), expect.any(Object));
+			expect(shortcuts.has("ctrl+shift+k")).toBe(false);
+
+			warnSpy.mockRestore();
+		});
+
 		it("warns when two extensions register same shortcut", async () => {
 			// Use a non-reserved shortcut
 			const extCode1 = `

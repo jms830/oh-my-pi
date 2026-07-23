@@ -363,6 +363,7 @@ export interface InteractiveModeContext {
 	showSettingsSelector(): void;
 	showAdvisorConfigure(): void;
 	showHistorySearch(): void;
+	showCommandPalette(): void;
 	showExtensionsDashboard(): void;
 	showAgentsDashboard(): void;
 	showModelSelector(options?: { temporaryOnly?: boolean }): void;

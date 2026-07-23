@@ -418,6 +418,10 @@ export class ExtensionRunner {
 		"ctrl+q": true,
 		"shift+tab": true,
 		"shift+ctrl+p": true,
+		// Default chord for `app.command.palette`; both modifier orders reserved
+		// because this map is matched by lowercase key, not canonical ordering.
+		"ctrl+shift+k": true,
+		"shift+ctrl+k": true,
 		"alt+enter": true,
 		escape: true,
 		enter: true,

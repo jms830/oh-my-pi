@@ -13,6 +13,7 @@ import {
 	saveWatchdogConfigFile,
 } from "../../advisor";
 import { reset as resetCapabilities } from "../../capability";
+import { type AppKeybinding, formatKeyHint } from "../../config/keybindings";
 import { formatModelSelectorValue, resolveAdvisorRoleSelection } from "../../config/model-resolver";
 import { getRoleInfo } from "../../config/model-roles";
 import { settings } from "../../config/settings";
@@ -63,6 +64,7 @@ import { type AdvisorConfigDeps, AdvisorConfigOverlayComponent } from "../compon
 import { AgentDashboard } from "../components/agent-dashboard";
 import { AgentHubOverlayComponent } from "../components/agent-hub";
 import { AssistantMessageComponent } from "../components/assistant-message";
+import { CommandPaletteComponent, type CommandPaletteEntry } from "../components/command-palette";
 import { CopySelectorComponent } from "../components/copy-selector";
 import { ExtensionDashboard } from "../components/extensions";
 import { HistorySearchComponent } from "../components/history-search";
@@ -312,6 +314,142 @@ export class SelectorController {
 			);
 			return { component, focus: component };
 		});
+	}
+
+	/**
+	 * Open the command palette: one searchable list of high-value app actions
+	 * plus every available slash command. Entries close the palette and either
+	 * invoke a selector directly or route a slash command through the editor's
+	 * submit path (the single owner of built-in command execution).
+	 */
+	async showCommandPalette(): Promise<void> {
+		let closeSelector: (() => void) | undefined;
+		const close = () => {
+			closeSelector?.();
+			this.ctx.ui.requestRender();
+		};
+		const entries = await this.#buildCommandPaletteEntries(close);
+		this.showSelector(done => {
+			closeSelector = done;
+			const palette = new CommandPaletteComponent(entries, close);
+			return { component: palette, focus: palette.getSelectList() };
+		});
+	}
+
+	#keyHint(id: AppKeybinding): string | undefined {
+		const [first] = this.ctx.keybindings.getKeys(id);
+		return first ? formatKeyHint(first) : undefined;
+	}
+
+	async #buildCommandPaletteEntries(close: () => void): Promise<CommandPaletteEntry[]> {
+		const entries: CommandPaletteEntry[] = [
+			{
+				id: "app:model:roles",
+				label: "Model: set role models",
+				description: "Open model selector",
+				hint: this.#keyHint("app.model.select"),
+				run: () => {
+					close();
+					this.ctx.showModelSelector();
+				},
+			},
+			{
+				id: "app:model:temporary",
+				label: "Model: temporary for session",
+				description: "Pick a model for this session only",
+				hint: this.#keyHint("app.model.selectTemporary"),
+				run: () => {
+					close();
+					this.ctx.showModelSelector({ temporaryOnly: true });
+				},
+			},
+			{
+				id: "app:agents:hub",
+				label: "Agents: hub",
+				description: "Open agent hub",
+				hint: this.#keyHint("app.agents.hub"),
+				run: () => {
+					close();
+					this.ctx.showAgentHub();
+				},
+			},
+			{
+				id: "app:history:search",
+				label: "History: search prompts",
+				description: "Search prompt history",
+				hint: this.#keyHint("app.history.search"),
+				run: () => {
+					close();
+					this.ctx.showHistorySearch();
+				},
+			},
+			{
+				id: "app:session:tree",
+				label: "Session: tree",
+				description: "Open session tree",
+				hint: this.#keyHint("app.session.tree"),
+				run: () => {
+					close();
+					this.ctx.showTreeSelector();
+				},
+			},
+			{
+				id: "app:session:fork",
+				label: "Session: fork from message",
+				description: "Open user message selector",
+				hint: this.#keyHint("app.session.fork"),
+				run: () => {
+					close();
+					this.ctx.showUserMessageSelector();
+				},
+			},
+			{
+				id: "app:plugin:install",
+				label: "Plugins: install",
+				description: "Browse marketplace plugins",
+				run: () => {
+					close();
+					this.ctx.showPluginSelector("install");
+				},
+			},
+			{
+				id: "app:plugin:uninstall",
+				label: "Plugins: uninstall",
+				description: "Remove installed plugin",
+				run: () => {
+					close();
+					this.ctx.showPluginSelector("uninstall");
+				},
+			},
+		];
+
+		// Deferred import: available-commands eagerly pulls the builtin-registry
+		// graph, so loading it statically here creates a module-init cycle through
+		// selector-controller. Load it lazily when the palette actually opens.
+		const { buildAvailableSlashCommands } = await import("../../slash-commands/available-commands");
+		const commands = await buildAvailableSlashCommands(this.ctx.session);
+		for (const command of commands) {
+			entries.push({
+				id: `slash:${command.name}`,
+				label: `/${command.name}`,
+				description: command.description,
+				hint: command.source,
+				run: () => {
+					close();
+					const text = `/${command.name}`;
+					const needsArgs = Boolean(command.input) || (command.subcommands?.length ?? 0) > 0;
+					if (needsArgs) {
+						this.ctx.editor.setText(`${text} `);
+						this.ctx.ui.requestRender();
+						return;
+					}
+					this.ctx.editor.setText(text);
+					this.ctx.editor.submit();
+				},
+			});
+		}
+
+		return entries;
 	}
 
 	/**

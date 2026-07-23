@@ -53,6 +53,7 @@ interface AppKeybindings {
 	"app.plan.toggle": true;
 	"app.history.search": true;
 	"app.stt.toggle": true;
+	"app.command.palette": true;
 }
 
 export type AppKeybinding = keyof AppKeybindings;
@@ -221,6 +222,13 @@ export const KEYBINDINGS = {
 	"app.stt.toggle": {
 		defaultKeys: [],
 		description: "Toggle speech-to-text (default gesture: hold Space)",
+	},
+	"app.command.palette": {
+		// Ctrl+Shift+P is unavailable: it canonicalizes to the same chord as
+		// app.model.cycleBackward (shift+ctrl+p). Ctrl+Shift+K is unused (ctrl+k
+		// alone is tui.editor.deleteToLineEnd, a distinct chord).
+		defaultKeys: "ctrl+shift+k",
+		description: "Open command palette",
 	},
 } as const satisfies KeybindingDefinitions;
 

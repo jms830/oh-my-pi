@@ -60,6 +60,7 @@ async function createContext() {
 		"app.model.selectTemporary": ["ctrl+y"],
 		"app.model.select": ["alt+m"],
 		"app.retry": ["alt+r"],
+		"app.command.palette": ["ctrl+shift+k"],
 	};
 	const customHandlers = new Map<string, () => void>();
 	const setActionKeys = vi.fn();
@@ -188,6 +189,7 @@ async function createContext() {
 		handleSTTToggle: vi.fn(),
 		showDebugSelector: vi.fn(),
 		showHistorySearch: vi.fn(),
+		showCommandPalette: vi.fn(),
 		toggleThinkingBlockVisibility: vi.fn(),
 		showModelSelector,
 		updateEditorBorderColor: vi.fn(),
@@ -557,5 +559,16 @@ describe("InputController keybinding setup", () => {
 				userInitiated: true,
 			});
 		}
+	});
+	it("opens the command palette on its configured chord", async () => {
+		const { InputController, ctx, customHandlers } = await createContext();
+		const controller = new InputController(ctx);
+
+		controller.setupKeyHandlers();
+
+		const handler = customHandlers.get("ctrl+shift+k");
+		expect(handler).toBeDefined();
+		handler?.();
+		expect(ctx.showCommandPalette).toHaveBeenCalledTimes(1);
 	});
 });
